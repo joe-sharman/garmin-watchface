@@ -14,7 +14,7 @@ export PATH := $(JAVA_HOME)/bin:$(PATH)
 
 BUILD_FLAGS := -f monkey.jungle -y "$(DEVELOPER_KEY)" -l 3 -w
 
-.PHONY: build run test package simulator key check-key clean
+.PHONY: build run watch test package simulator key check-key clean
 
 build: check-key
 	@mkdir -p bin
@@ -22,6 +22,24 @@ build: check-key
 
 run: build simulator
 	$(MONKEYDO) bin/$(APP_NAME).prg $(DEVICE)
+
+WATCHED := source resources manifest.xml monkey.jungle
+WATCH_STAMP := bin/.watch-stamp
+
+# Polls rather than using fswatch so there is nothing extra to install.
+# A failed build must not stop the loop, and the stamp is touched before
+# building so a broken build is not retried until the next edit.
+watch: check-key simulator
+	@mkdir -p bin
+	@echo "Watching $(WATCHED) (ctrl+c to stop)"
+	@rm -f $(WATCH_STAMP)
+	@while true; do \
+		if [ ! -f $(WATCH_STAMP) ] || [ -n "$$(find $(WATCHED) -newer $(WATCH_STAMP) -print -quit)" ]; then \
+			touch $(WATCH_STAMP); \
+			$(MAKE) --no-print-directory run || echo "Build failed, waiting for the next change"; \
+		fi; \
+		sleep 1; \
+	done
 
 test: check-key simulator
 	@mkdir -p bin
