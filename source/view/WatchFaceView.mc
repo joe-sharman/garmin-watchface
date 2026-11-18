@@ -2,6 +2,7 @@ import Toybox.Graphics;
 import Toybox.Lang;
 import Toybox.System;
 import Toybox.Time.Gregorian;
+import Toybox.Weather;
 import Toybox.WatchUi;
 
 class WatchFaceView extends WatchUi.WatchFace {
@@ -12,6 +13,7 @@ class WatchFaceView extends WatchUi.WatchFace {
     private const STAT_VALUE_Y = 0.78;
     private const STAT_XS = [0.28, 0.5, 0.72];
     private const LOW_POWER_DATE_DROP_PX = 50;
+    private const UV_LOOKAHEAD_HOURS = 12;
 
     private var _isLowPower as Boolean = false;
 
@@ -61,9 +63,50 @@ class WatchFaceView extends WatchUi.WatchFace {
     }
 
     private function drawActive(dc as Graphics.Dc, timeText as String, dateText as String) as Void {
-        drawText(dc, dateText, Graphics.FONT_TINY, Graphics.COLOR_LT_GRAY, 0.5, DATE_Y, 0, 0);
+        drawDateLine(dc, dateText);
         drawText(dc, timeText, Graphics.FONT_NUMBER_THAI_HOT, Graphics.COLOR_WHITE, 0.5, TIME_Y, 0, 0);
         drawStats(dc);
+    }
+
+    //! Date and the day's temperature range, centred, with any icons worth
+    //! acting on hanging off the right so the text stays centred. Shows only
+    //! the date when there is no forecast.
+    private function drawDateLine(dc as Graphics.Dc, dateText as String) as Void {
+        var forecast = WatchData.dailyForecast();
+        var text = forecast == null ? dateText : dateText + " · " + TemperatureFormat.formatRange(
+            forecast.lowTemperature, forecast.highTemperature, WatchData.usesFahrenheit()
+        );
+        var adviceIcons = forecast == null ? [] as Array<Symbol> : adviceIconsFor(forecast);
+
+        var iconSize = dc.getWidth() / 20;
+        var gap = iconSize / 2;
+        var textWidth = dc.getTextWidthInPixels(text, Graphics.FONT_TINY);
+        var centreX = dc.getWidth() / 2;
+        var textRight = centreX + textWidth / 2;
+        var y = (dc.getHeight() * DATE_Y).toNumber();
+
+        dc.setColor(Graphics.COLOR_LT_GRAY, Graphics.COLOR_TRANSPARENT);
+        dc.drawText(centreX, y, Graphics.FONT_TINY, text, Graphics.TEXT_JUSTIFY_CENTER | Graphics.TEXT_JUSTIFY_VCENTER);
+
+        for (var i = 0; i < adviceIcons.size(); i++) {
+            var cx = textRight + gap + iconSize / 2 + i * (iconSize + gap);
+            if (adviceIcons[i] == :rain) {
+                Icons.drawRaindrop(dc, cx, y, iconSize);
+            } else {
+                Icons.drawSun(dc, cx, y, iconSize);
+            }
+        }
+    }
+
+    private function adviceIconsFor(forecast as Weather.DailyForecast) as Array<Symbol> {
+        var icons = [] as Array<Symbol>;
+        if (DayAdvice.needsRainJacket(forecast.precipitationChance)) {
+            icons.add(:rain);
+        }
+        if (DayAdvice.needsSunscreen(DayAdvice.peakUvIndex(WatchData.upcomingUvIndexes(UV_LOOKAHEAD_HOURS)))) {
+            icons.add(:sun);
+        }
+        return icons;
     }
 
     private function drawStats(dc as Graphics.Dc) as Void {

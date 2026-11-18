@@ -34,6 +34,30 @@ module Icons {
         dc.fillRectangle(left + 2, top + 2, (size - 4) * level / 100, height - 4);
     }
 
+    function drawRaindrop(dc as Graphics.Dc, cx as Number, cy as Number, size as Number) as Void {
+        var r = size / 3;
+        var bulbY = cy + size / 2 - r;
+        dc.setColor(Graphics.COLOR_BLUE, Graphics.COLOR_TRANSPARENT);
+        dc.fillCircle(cx, bulbY, r);
+        dc.fillPolygon([[cx, cy - size / 2], [cx - r + 1, bulbY], [cx + r - 1, bulbY]]);
+    }
+
+    function drawSun(dc as Graphics.Dc, cx as Number, cy as Number, size as Number) as Void {
+        var directions = [[1, 0], [1, 1], [0, 1], [-1, 1], [-1, 0], [-1, -1], [0, -1], [1, -1]] as Array<Array<Number> >;
+        var inner = size * 2 / 5;
+        var outer = size / 2;
+        dc.setColor(Graphics.COLOR_YELLOW, Graphics.COLOR_TRANSPARENT);
+        dc.fillCircle(cx, cy, size / 5);
+        for (var i = 0; i < directions.size(); i++) {
+            var d = directions[i];
+            var scale = (d[0] != 0 && d[1] != 0) ? 7 : 10;
+            dc.drawLine(
+                cx + d[0] * inner * scale / 10, cy + d[1] * inner * scale / 10,
+                cx + d[0] * outer * scale / 10, cy + d[1] * outer * scale / 10
+            );
+        }
+    }
+
     function drawFoot(dc as Graphics.Dc, cx as Number, cy as Number, u as Number) as Void {
         dc.fillEllipse(cx, cy, u, 2 * u);
         dc.fillEllipse(cx, cy + 3 * u, u - 1, u - 1);
